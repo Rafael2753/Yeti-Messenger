@@ -1,0 +1,10 @@
+{
+  "description": "Enables seamless communication with a desktop companion robot via text or doodles using a sleek, dark-mode interface with intuitive controls.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
