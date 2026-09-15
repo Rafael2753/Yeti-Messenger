@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+@theme inline {
+  --color-teal: #00E5CC;
+  --color-teal-dim: #00B8A4;
+  --color-bg: #08090B;
+  --color-surface: rgba(255, 255, 255, 0.055);
+  --color-surface-hover: rgba(255, 255, 255, 0.085);
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-border-strong: rgba(255, 255, 255, 0.15);
+  --color-text: #EEF2F7;
+  --color-muted: rgba(255, 255, 255, 0.38);
+  --radius-card: 16px;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  background-color: #08090B;
+  font-family: 'Outfit', sans-serif;
+  color: #EEF2F7;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar { display: none; }
+
+textarea {
+  resize: none;
+  outline: none;
+}
+
+textarea::placeholder {
+  color: rgba(255, 255, 255, 0.28);
+}
