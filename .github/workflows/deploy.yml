@@ -32,12 +32,10 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build the app
         run: pnpm run build
-        env:
-          FIGMA_PUBLIC_URL: /Yeti-Messenger
 
       - name: Upload build output
         uses: actions/upload-pages-artifact@v3

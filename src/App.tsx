@@ -1,4 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  'https://kapioajfhqnowgzzxros.supabase.co',
+  'sb_publishable_kw0OAGWVnOxigswKa-_o5g_4Dg4pWHW'
+)
 
 type Mode = 'text' | 'doodle'
 
@@ -95,16 +101,28 @@ export default function App() {
   const handleClear = () => { setStrokes([]); setCurrentStroke([]) }
   const handleUndo = () => setStrokes(prev => prev.slice(0, -1))
 
-  const handleSend = () => {
-    if (isSending) return
+  const handleSend = async () => {
+    if (isSending || !canSend) return
     setIsSending(true)
-    setTimeout(() => {
-      setIsSending(false)
-      setSent(true)
-      setTimeout(() => setSent(false), 2000)
-      if (mode === 'text') setText('')
-      if (mode === 'doodle') handleClear()
-    }, 900)
+
+    const payload =
+      mode === 'text'
+        ? { type: 'text', content: text }
+        : { type: 'doodle', content: JSON.stringify(strokes) }
+
+    const { error } = await supabase.from('messages').insert(payload)
+
+    setIsSending(false)
+
+    if (error) {
+      console.error('Failed to send to Supabase:', error)
+      return
+    }
+
+    setSent(true)
+    setTimeout(() => setSent(false), 2000)
+    if (mode === 'text') setText('')
+    if (mode === 'doodle') handleClear()
   }
 
   const canSend = mode === 'text' ? text.trim().length > 0 : strokes.length > 0
