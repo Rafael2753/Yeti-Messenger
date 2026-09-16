@@ -20,6 +20,10 @@ export default function App() {
   const [isSending, setIsSending] = useState(false)
   const [sent, setSent] = useState(false)
 
+  useEffect(() => {
+    document.title = "Yeti Messenger";
+  }, []);
+
   // doodle state
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [strokes, setStrokes] = useState<Stroke[]>([])
