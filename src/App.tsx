@@ -361,7 +361,7 @@ export default function App() {
               color: 'rgba(255,255,255,0.42)',
             }}
           >
-            This phone will send messages and doodles to the Yeti you select.
+            Please select your Yeti to begin sending messages to your partner.
           </p>
 
           <div
