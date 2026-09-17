@@ -371,7 +371,7 @@ export default function App() {
               gap: 12,
             }}
           >
-            {/* Yeti B — Cyan */}
+            {/* Cyan */}
             <button
               onClick={() => handleSelectYeti('YETI_B')}
               style={{
@@ -393,26 +393,13 @@ export default function App() {
                   '0 4px 24px rgba(0,229,204,0.12), 0 1px 4px rgba(0,0,0,0.4)',
               }}
             >
-              <div>
-                <div
-                  style={{
-                    fontSize: 17,
-                    fontWeight: 500,
-                    marginBottom: 5,
-                  }}
-                >
-                  Yeti B
-                </div>
-
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: 'rgba(255,255,255,0.35)',
-                    letterSpacing: '0.4px',
-                  }}
-                >
-                  Cyan
-                </div>
+              <div
+                style={{
+                  fontSize: 17,
+                  fontWeight: 500,
+                }}
+              >
+                Cyan
               </div>
 
               <div
@@ -427,7 +414,7 @@ export default function App() {
               />
             </button>
 
-            {/* Yeti A — Yellow */}
+            {/* Yellow */}
             <button
               onClick={() => handleSelectYeti('YETI_A')}
               style={{
@@ -449,26 +436,13 @@ export default function App() {
                   '0 4px 24px rgba(255,209,102,0.12), 0 1px 4px rgba(0,0,0,0.4)',
               }}
             >
-              <div>
-                <div
-                  style={{
-                    fontSize: 17,
-                    fontWeight: 500,
-                    marginBottom: 5,
-                  }}
-                >
-                  Yeti A
-                </div>
-
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: 'rgba(255,255,255,0.35)',
-                    letterSpacing: '0.4px',
-                  }}
-                >
-                  Yellow
-                </div>
+              <div
+                style={{
+                  fontSize: 17,
+                  fontWeight: 500,
+                }}
+              >
+                Yellow
               </div>
 
               <div
@@ -784,6 +758,7 @@ export default function App() {
                 boxSizing: 'border-box',
               }}
             >
+              {/* Colors */}
               <div
                 style={{
                   display: 'flex',
@@ -806,7 +781,7 @@ export default function App() {
                           : '2px solid transparent',
                       boxShadow:
                         strokeColor === color
-                          ? `0 0 0 2px rgba(255,255,255,0.08)`
+                          ? '0 0 0 2px rgba(255,255,255,0.08)'
                           : 'none',
                       padding: 0,
                       cursor: 'pointer',
@@ -816,20 +791,22 @@ export default function App() {
                 ))}
               </div>
 
+              {/* Width Dots */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 5,
+                  gap: 8,
                 }}
               >
                 {[2, 4, 7].map((width) => (
                   <button
                     key={width}
                     onClick={() => setStrokeWidth(width)}
+                    aria-label={`Brush size ${width}`}
                     style={{
-                      width: 26,
-                      height: 26,
+                      width: 28,
+                      height: 28,
                       borderRadius: 8,
                       border:
                         strokeWidth === width
@@ -839,40 +816,53 @@ export default function App() {
                         strokeWidth === width
                           ? accentGlow
                           : 'transparent',
-                      color:
-                        strokeWidth === width
-                          ? '#fff'
-                          : 'rgba(255,255,255,0.3)',
-                      fontFamily: 'Outfit, sans-serif',
-                      fontSize: 9,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
                       cursor: 'pointer',
                     }}
                   >
-                    {width}
+                    <span
+                      style={{
+                        width: width * 2,
+                        height: width * 2,
+                        minWidth: width * 2,
+                        minHeight: width * 2,
+                        borderRadius: '50%',
+                        background:
+                          strokeWidth === width
+                            ? '#fff'
+                            : 'rgba(255,255,255,0.45)',
+                        display: 'block',
+                      }}
+                    />
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Doodle Footer Controls */}
+            {/* Doodle Actions */}
             <div
               style={{
                 width: '100%',
                 display: 'flex',
-                justifyContent: 'space-between',
-                marginTop: 8,
+                gap: 10,
+                marginTop: 12,
               }}
             >
               <button
                 onClick={handleUndo}
                 style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'rgba(255,255,255,0.25)',
+                  flex: 1,
+                  height: 42,
+                  borderRadius: 13,
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  background: 'rgba(255,255,255,0.035)',
+                  color: 'rgba(255,255,255,0.45)',
                   fontFamily: 'Outfit, sans-serif',
-                  fontSize: 10,
+                  fontSize: 11,
                   cursor: 'pointer',
-                  padding: 4,
                 }}
               >
                 Undo
@@ -881,13 +871,15 @@ export default function App() {
               <button
                 onClick={handleClear}
                 style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'rgba(255,255,255,0.25)',
+                  flex: 1,
+                  height: 42,
+                  borderRadius: 13,
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  background: 'rgba(255,255,255,0.035)',
+                  color: 'rgba(255,255,255,0.45)',
                   fontFamily: 'Outfit, sans-serif',
-                  fontSize: 10,
+                  fontSize: 11,
                   cursor: 'pointer',
-                  padding: 4,
                 }}
               >
                 Clear
