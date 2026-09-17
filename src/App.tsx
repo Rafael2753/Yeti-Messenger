@@ -12,7 +12,6 @@ type YetiId = 'YETI_A' | 'YETI_B'
 const SWATCHES = ['#00E5CC', '#FFFFFF', '#FF4D6D', '#FFD166', '#74C0FC']
 const MAX_CHARS = 280
 
-// Yeti display coordinate system: LANDSCAPE
 const CANVAS_WIDTH = 280
 const CANVAS_HEIGHT = 240
 
@@ -33,7 +32,6 @@ export default function App() {
   const [isSending, setIsSending] = useState(false)
   const [sent, setSent] = useState(false)
 
-  // Yeti identity
   const [recipientId, setRecipientId] = useState<YetiId>(() => {
     const saved = localStorage.getItem('yeti_id')
     return saved === 'YETI_B' ? 'YETI_B' : 'YETI_A'
@@ -43,101 +41,99 @@ export default function App() {
     return localStorage.getItem('yeti_onboarding_complete') === 'true'
   })
 
-  // doodle state
+  useEffect(() => {
+    document.title = 'Yeti Messenger'
+  }, [])
+
   const canvasRef = useRef<HTMLCanvasElement>(null)
+
   const [strokes, setStrokes] = useState<Stroke[]>([])
   const [currentStroke, setCurrentStroke] = useState<DrawPoint[]>([])
   const isDrawing = useRef(false)
+
   const [strokeColor, setStrokeColor] = useState(SWATCHES[0])
   const [strokeWidth, setStrokeWidth] = useState(3)
 
-  // Active Yeti accent
   const accentColor =
-    recipientId === 'YETI_B'
+    recipientId === 'YETI_A'
       ? '#FFD166'
       : '#00E5CC'
 
   const accentGlow =
-    recipientId === 'YETI_B'
+    recipientId === 'YETI_A'
       ? 'rgba(255,209,102,0.12)'
       : 'rgba(0,229,204,0.12)'
 
   const accentBorder =
-    recipientId === 'YETI_B'
+    recipientId === 'YETI_A'
       ? 'rgba(255,209,102,0.22)'
       : 'rgba(0,229,204,0.22)'
 
   const accentGradient =
-    recipientId === 'YETI_B'
+    recipientId === 'YETI_A'
       ? 'linear-gradient(135deg, rgba(255,209,102,0.2) 0%, rgba(255,209,102,0.1) 100%)'
       : 'linear-gradient(135deg, rgba(0,229,204,0.2) 0%, rgba(0,229,204,0.1) 100%)'
 
   const accentShadow =
-    recipientId === 'YETI_B'
+    recipientId === 'YETI_A'
       ? '0 4px 24px rgba(255,209,102,0.35), 0 1px 4px rgba(0,0,0,0.4)'
       : '0 4px 24px rgba(0,229,204,0.35), 0 1px 4px rgba(0,0,0,0.4)'
 
-  const handleSelectYeti = (yeti: YetiId) => {
-    setRecipientId(yeti)
+  const redraw = useCallback(
+    (strokeList: Stroke[], active: DrawPoint[] = []) => {
+      const canvas = canvasRef.current
+      if (!canvas) return
 
-    localStorage.setItem('yeti_id', yeti)
-    localStorage.setItem('yeti_onboarding_complete', 'true')
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
 
-    setOnboardingComplete(true)
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // Default drawing color follows Yeti identity.
-    setStrokeColor(
-      yeti === 'YETI_B'
-        ? '#FFD166'
-        : '#00E5CC'
-    )
-  }
+      const drawStroke = (
+        pts: DrawPoint[],
+        color: string,
+        width: number
+      ) => {
+        if (pts.length < 2) return
 
-  useEffect(() => {
-    document.title = "Yeti Messenger"
-  }, [])
+        ctx.beginPath()
+        ctx.strokeStyle = color
+        ctx.lineWidth = width
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
 
-  const redraw = useCallback((strokeList: Stroke[], active: DrawPoint[] = []) => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+        ctx.moveTo(pts[0].x, pts[0].y)
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i].x, pts[i].y)
+        }
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-    const drawStroke = (pts: DrawPoint[], color: string, width: number) => {
-      if (pts.length < 2) return
-
-      ctx.beginPath()
-      ctx.strokeStyle = color
-      ctx.lineWidth = width
-      ctx.lineCap = 'round'
-      ctx.lineJoin = 'round'
-      ctx.moveTo(pts[0].x, pts[0].y)
-
-      for (let i = 1; i < pts.length; i++) {
-        ctx.lineTo(pts[i].x, pts[i].y)
+        ctx.stroke()
       }
 
-      ctx.stroke()
-    }
+      strokeList.forEach((s) =>
+        drawStroke(s.points, s.color, s.width)
+      )
 
-    strokeList.forEach(s => drawStroke(s.points, s.color, s.width))
-
-    if (active.length > 1) {
-      drawStroke(active, strokeColor, strokeWidth)
-    }
-  }, [strokeColor, strokeWidth])
+      if (active.length > 1) {
+        drawStroke(active, strokeColor, strokeWidth)
+      }
+    },
+    [strokeColor, strokeWidth]
+  )
 
   useEffect(() => {
     redraw(strokes, currentStroke)
   }, [strokes, currentStroke, redraw])
 
   const getPos = (
-    e: React.TouchEvent | React.MouseEvent,
-    canvas: HTMLCanvasElement
+    e:
+      | React.MouseEvent<HTMLCanvasElement>
+      | React.TouchEvent<HTMLCanvasElement>
   ): DrawPoint => {
+    const canvas = canvasRef.current
+    if (!canvas) return { x: 0, y: 0 }
+
     const rect = canvas.getBoundingClientRect()
 
     const scaleX = canvas.width / rect.width
@@ -145,40 +141,50 @@ export default function App() {
 
     if ('touches' in e) {
       return {
-        x: (e.touches[0].clientX - rect.left) * scaleX,
-        y: (e.touches[0].clientY - rect.top) * scaleY,
+        x:
+          (e.touches[0].clientX - rect.left) *
+          scaleX,
+        y:
+          (e.touches[0].clientY - rect.top) *
+          scaleY,
       }
     }
 
     return {
-      x: ((e as React.MouseEvent).clientX - rect.left) * scaleX,
-      y: ((e as React.MouseEvent).clientY - rect.top) * scaleY,
+      x:
+        (e.clientX - rect.left) *
+        scaleX,
+      y:
+        (e.clientY - rect.top) *
+        scaleY,
     }
   }
 
-  const startDraw = (e: React.TouchEvent | React.MouseEvent) => {
+  const startDraw = (
+    e:
+      | React.MouseEvent<HTMLCanvasElement>
+      | React.TouchEvent<HTMLCanvasElement>
+  ) => {
     e.preventDefault()
 
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const pt = getPos(e)
 
     isDrawing.current = true
-
-    const pt = getPos(e, canvas)
     setCurrentStroke([pt])
   }
 
-  const moveDraw = (e: React.TouchEvent | React.MouseEvent) => {
+  const moveDraw = (
+    e:
+      | React.MouseEvent<HTMLCanvasElement>
+      | React.TouchEvent<HTMLCanvasElement>
+  ) => {
     e.preventDefault()
 
     if (!isDrawing.current) return
 
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const pt = getPos(e)
 
-    const pt = getPos(e, canvas)
-
-    setCurrentStroke(prev => [...prev, pt])
+    setCurrentStroke((prev) => [...prev, pt])
   }
 
   const endDraw = () => {
@@ -187,13 +193,13 @@ export default function App() {
     isDrawing.current = false
 
     if (currentStroke.length > 1) {
-      setStrokes(prev => [
+      setStrokes((prev) => [
         ...prev,
         {
           points: currentStroke,
           color: strokeColor,
-          width: strokeWidth
-        }
+          width: strokeWidth,
+        },
       ])
     }
 
@@ -206,7 +212,22 @@ export default function App() {
   }
 
   const handleUndo = () => {
-    setStrokes(prev => prev.slice(0, -1))
+    setStrokes((prev) => prev.slice(0, -1))
+  }
+
+  const handleSelectYeti = (yeti: YetiId) => {
+    setRecipientId(yeti)
+
+    localStorage.setItem('yeti_id', yeti)
+    localStorage.setItem('yeti_onboarding_complete', 'true')
+
+    setStrokeColor(
+      yeti === 'YETI_A'
+        ? '#FFD166'
+        : '#00E5CC'
+    )
+
+    setOnboardingComplete(true)
   }
 
   const canSend =
@@ -225,13 +246,13 @@ export default function App() {
             type: 'text',
             sender_id: 'PHONE',
             recipient_id: recipientId,
-            content: text
+            content: text,
           }
         : {
             type: 'doodle',
             sender_id: 'PHONE',
             recipient_id: recipientId,
-            content: JSON.stringify(strokes)
+            content: JSON.stringify(strokes),
           }
 
     const { error } = await supabase
@@ -241,13 +262,15 @@ export default function App() {
     setIsSending(false)
 
     if (error) {
-      console.error('Failed to send to Supabase:', error)
+      console.error('Send error:', error)
       return
     }
 
     setSent(true)
 
-    setTimeout(() => setSent(false), 2000)
+    setTimeout(() => {
+      setSent(false)
+    }, 2000)
 
     if (mode === 'text') {
       setText('')
@@ -258,10 +281,6 @@ export default function App() {
     }
   }
 
-  // ---------------------------------------------------------
-  // FIRST-LAUNCH ONBOARDING
-  // ---------------------------------------------------------
-
   if (!onboardingComplete) {
     return (
       <div
@@ -271,19 +290,19 @@ export default function App() {
           minHeight: '100px',
           marginLeft: '6px',
           marginRight: '6px',
-          background: 'linear-gradient(160deg, #0D0F13 0%, #08090B 60%)',
+          background:
+            'linear-gradient(160deg, #0D0F13 0%, #08090B 60%)',
           position: 'relative',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'center',
+          justifyContent: 'space-between',
           padding: '16px',
           boxSizing: 'border-box',
-          color: '#EEF2F7',
+          color: '#fff',
           fontFamily: 'Outfit, sans-serif',
         }}
       >
-        {/* Ambient glow */}
         <div
           style={{
             position: 'absolute',
@@ -294,7 +313,7 @@ export default function App() {
             height: 260,
             borderRadius: '50%',
             background:
-              'radial-gradient(circle, rgba(0,229,204,0.12) 0%, transparent 70%)',
+              'radial-gradient(circle, rgba(0,229,204,0.09) 0%, rgba(0,0,0,0) 70%)',
             pointerEvents: 'none',
           }}
         />
@@ -303,32 +322,47 @@ export default function App() {
           style={{
             position: 'relative',
             zIndex: 1,
-            padding: '0 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            flex: 1,
           }}
         >
           <div
             style={{
-              fontSize: 28,
-              fontWeight: 700,
-              letterSpacing: '-0.5px',
-              color: '#EEF2F7',
-              marginBottom: 4,
+              marginBottom: 10,
+              fontSize: 12,
+              color: 'rgba(255,255,255,0.35)',
+              letterSpacing: '1.4px',
+              textTransform: 'uppercase',
             }}
           >
             Yeti V1.0
           </div>
 
-          <div
+          <h1
             style={{
-              fontSize: 12,
-              fontWeight: 400,
-              color: 'rgba(255,255,255,0.38)',
-              letterSpacing: '0.3px',
-              marginBottom: 32,
+              margin: 0,
+              fontSize: 34,
+              lineHeight: 1.05,
+              fontWeight: 500,
+              letterSpacing: '-1.4px',
             }}
           >
             Choose your Yeti
-          </div>
+          </h1>
+
+          <p
+            style={{
+              margin: '12px 0 28px',
+              maxWidth: 300,
+              fontSize: 14,
+              lineHeight: 1.6,
+              color: 'rgba(255,255,255,0.42)',
+            }}
+          >
+            This phone will send messages and doodles to the Yeti you select.
+          </p>
 
           <div
             style={{
@@ -337,98 +371,158 @@ export default function App() {
               gap: 12,
             }}
           >
-            <button
-              onClick={() => handleSelectYeti('YETI_A')}
-              style={{
-                width: '100%',
-                padding: '18px 20px',
-                borderRadius: 16,
-                border: '1px solid rgba(0,229,204,0.32)',
-                background:
-                  'linear-gradient(135deg, rgba(0,229,204,0.14) 0%, rgba(0,229,204,0.06) 100%)',
-                color: '#00E5CC',
-                fontFamily: 'Outfit, sans-serif',
-                fontSize: 16,
-                fontWeight: 600,
-                letterSpacing: '0.2px',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              YETI_A
-              <div
-                style={{
-                  marginTop: 4,
-                  fontSize: 11,
-                  fontWeight: 400,
-                  color: 'rgba(255,255,255,0.32)',
-                }}
-              >
-                Cyan
-              </div>
-            </button>
-
+            {/* Yeti B — Cyan */}
             <button
               onClick={() => handleSelectYeti('YETI_B')}
               style={{
                 width: '100%',
-                padding: '18px 20px',
-                borderRadius: 16,
-                border: '1px solid rgba(255,209,102,0.32)',
+                minHeight: 76,
+                borderRadius: 18,
+                border: '1px solid rgba(0,229,204,0.22)',
                 background:
-                  'linear-gradient(135deg, rgba(255,209,102,0.14) 0%, rgba(255,209,102,0.06) 100%)',
-                color: '#FFD166',
-                fontFamily: 'Outfit, sans-serif',
-                fontSize: 16,
-                fontWeight: 600,
-                letterSpacing: '0.2px',
+                  'linear-gradient(135deg, rgba(0,229,204,0.2) 0%, rgba(0,229,204,0.08) 100%)',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 20px',
                 cursor: 'pointer',
+                fontFamily: 'Outfit, sans-serif',
                 textAlign: 'left',
+                boxShadow:
+                  '0 4px 24px rgba(0,229,204,0.12), 0 1px 4px rgba(0,0,0,0.4)',
               }}
             >
-              YETI_B
+              <div>
+                <div
+                  style={{
+                    fontSize: 17,
+                    fontWeight: 500,
+                    marginBottom: 5,
+                  }}
+                >
+                  Yeti B
+                </div>
+
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: 'rgba(255,255,255,0.35)',
+                    letterSpacing: '0.4px',
+                  }}
+                >
+                  Cyan
+                </div>
+              </div>
+
               <div
                 style={{
-                  marginTop: 4,
-                  fontSize: 11,
-                  fontWeight: 400,
-                  color: 'rgba(255,255,255,0.32)',
+                  width: 14,
+                  height: 14,
+                  borderRadius: '50%',
+                  background: '#00E5CC',
+                  boxShadow:
+                    '0 0 18px rgba(0,229,204,0.45)',
                 }}
-              >
-                Yellow
+              />
+            </button>
+
+            {/* Yeti A — Yellow */}
+            <button
+              onClick={() => handleSelectYeti('YETI_A')}
+              style={{
+                width: '100%',
+                minHeight: 76,
+                borderRadius: 18,
+                border: '1px solid rgba(255,209,102,0.22)',
+                background:
+                  'linear-gradient(135deg, rgba(255,209,102,0.2) 0%, rgba(255,209,102,0.08) 100%)',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 20px',
+                cursor: 'pointer',
+                fontFamily: 'Outfit, sans-serif',
+                textAlign: 'left',
+                boxShadow:
+                  '0 4px 24px rgba(255,209,102,0.12), 0 1px 4px rgba(0,0,0,0.4)',
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: 17,
+                    fontWeight: 500,
+                    marginBottom: 5,
+                  }}
+                >
+                  Yeti A
+                </div>
+
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: 'rgba(255,255,255,0.35)',
+                    letterSpacing: '0.4px',
+                  }}
+                >
+                  Yellow
+                </div>
               </div>
+
+              <div
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: '50%',
+                  background: '#FFD166',
+                  boxShadow:
+                    '0 0 18px rgba(255,209,102,0.45)',
+                }}
+              />
             </button>
           </div>
+        </div>
+
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 1,
+            textAlign: 'center',
+            paddingBottom: 4,
+            fontSize: 10,
+            color: 'rgba(255,255,255,0.18)',
+            letterSpacing: '0.4px',
+          }}
+        >
+          Yeti Messenger v1.0
         </div>
       </div>
     )
   }
 
-  // ---------------------------------------------------------
-  // MAIN APP
-  // Everything below remains your original design.
-  // ---------------------------------------------------------
-
   return (
     <div
-      className="flex flex-col"
       style={{
         width: '100%',
         height: '100dvh',
         minHeight: '100px',
         marginLeft: '6px',
         marginRight: '6px',
-        background: 'linear-gradient(160deg, #0D0F13 0%, #08090B 60%)',
+        background:
+          'linear-gradient(160deg, #0D0F13 0%, #08090B 60%)',
         position: 'relative',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
         padding: '16px',
+        boxSizing: 'border-box',
+        color: '#fff',
+        fontFamily: 'Outfit, sans-serif',
       }}
     >
-
-      {/* Ambient glow */}
       <div
         style={{
           position: 'absolute',
@@ -438,611 +532,479 @@ export default function App() {
           width: 260,
           height: 260,
           borderRadius: '50%',
-          background:
-            `radial-gradient(circle, ${accentGlow} 0%, transparent 70%)`,
+          background: `radial-gradient(circle, ${accentGlow} 0%, rgba(0,0,0,0) 70%)`,
           pointerEvents: 'none',
         }}
       />
 
       {/* Header */}
-      <header
-        className="flex items-center justify-between px-6 pt-12 flex-shrink-0"
-        style={{ paddingBottom: 0 }}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+        }}
       >
-        <div className="flex flex-col">
-          <span
-            style={{
-              fontSize: 28,
-              fontWeight: 700,
-              letterSpacing: '-0.5px',
-              color: '#EEF2F7',
-            }}
-          >
-            Yeti V1.0
-          </span>
-
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 400,
-              color: 'rgba(255,255,255,0.38)',
-              letterSpacing: '0.3px',
-              marginTop: 1,
-            }}
-          >
-            Desktop companion
-          </span>
-        </div>
-
-        {/* Connection badge */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 7,
-            background: accentGlow,
-            border: `1px solid ${accentBorder}`,
-            borderRadius: 999,
-            padding: '6px 12px',
-            backdropFilter: 'blur(12px)',
+            justifyContent: 'space-between',
+            marginBottom: 5,
           }}
         >
-          <span
+          <div
             style={{
-              width: 7,
-              height: 7,
-              borderRadius: '50%',
-              background: accentColor,
-              boxShadow: `0 0 6px ${accentColor}`,
-              display: 'inline-block',
-              animation: 'pulse 2.4s ease-in-out infinite',
-            }}
-          />
-
-          <span
-            style={{
-              fontSize: 12,
+              fontSize: 25,
               fontWeight: 500,
-              color: accentColor,
-              letterSpacing: '0.2px',
+              letterSpacing: '-0.8px',
             }}
           >
-            Connected
-          </span>
-        </div>
-      </header>
+            Yeti V1.0
+          </div>
 
-      {/* Mode Toggle */}
-      <div className="px-6 pb-3 flex-shrink-0">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '6px 10px',
+              borderRadius: 999,
+              background: accentGlow,
+              border: `1px solid ${accentBorder}`,
+              fontSize: 10,
+              color: accentColor,
+              letterSpacing: '0.4px',
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: accentColor,
+                boxShadow: `0 0 10px ${accentColor}`,
+              }}
+            />
+            Connected
+          </div>
+        </div>
+
         <div
           style={{
-            display: 'flex',
-            height: 50,
-            gap: 0,
-            background: 'rgba(255,255,255,0.055)',
-            border: '1px solid rgba(255,255,255,0.09)',
-            borderRadius: 14,
-            padding: 4,
-            backdropFilter: 'blur(16px)',
+            fontSize: 11,
+            color: 'rgba(255,255,255,0.28)',
+            letterSpacing: '0.6px',
           }}
         >
-          {(['text', 'doodle'] as Mode[]).map((m) => {
-            const active = mode === m
-
-            return (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                style={{
-                  flex: 1,
-                  padding: '10px 0',
-                  borderRadius: 10,
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontFamily: 'Outfit, sans-serif',
-                  fontSize: 14,
-                  fontWeight: active ? 600 : 400,
-                  letterSpacing: '0.2px',
-                  transition: 'all 0.22s ease',
-                  background: active
-                    ? accentGradient
-                    : 'transparent',
-                  color: active
-                    ? accentColor
-                    : 'rgba(255,255,255,0.42)',
-                  boxShadow: active
-                    ? `0 0 0 1px ${accentBorder}`
-                    : 'none',
-                }}
-              >
-                {m === 'text' ? '💬 Text' : '🎨 Doodle'}
-              </button>
-            )
-          })}
+          Desktop companion
         </div>
+      </div>
+
+      {/* Mode Toggle */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          height: 50,
+          marginTop: 16,
+          marginBottom: 12,
+          padding: 4,
+          borderRadius: 15,
+          background: 'rgba(255,255,255,0.035)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          display: 'flex',
+          boxSizing: 'border-box',
+        }}
+      >
+        <button
+          onClick={() => setMode('text')}
+          style={{
+            flex: 1,
+            border: 'none',
+            borderRadius: 11,
+            background:
+              mode === 'text'
+                ? accentGradient
+                : 'transparent',
+            color:
+              mode === 'text'
+                ? '#fff'
+                : 'rgba(255,255,255,0.3)',
+            fontFamily: 'Outfit, sans-serif',
+            fontSize: 12,
+            cursor: 'pointer',
+            boxShadow:
+              mode === 'text'
+                ? `inset 0 0 0 1px ${accentBorder}`
+                : 'none',
+          }}
+        >
+          Text
+        </button>
+
+        <button
+          onClick={() => setMode('doodle')}
+          style={{
+            flex: 1,
+            border: 'none',
+            borderRadius: 11,
+            background:
+              mode === 'doodle'
+                ? accentGradient
+                : 'transparent',
+            color:
+              mode === 'doodle'
+                ? '#fff'
+                : 'rgba(255,255,255,0.3)',
+            fontFamily: 'Outfit, sans-serif',
+            fontSize: 12,
+            cursor: 'pointer',
+            boxShadow:
+              mode === 'doodle'
+                ? `inset 0 0 0 1px ${accentBorder}`
+                : 'none',
+          }}
+        >
+          Doodle
+        </button>
       </div>
 
       {/* Main Content */}
       <div
-        className="px-6 flex flex-col"
         style={{
+          position: 'relative',
+          zIndex: 1,
           flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
           minHeight: 0,
         }}
       >
-
-        {/* Text Mode */}
-        <div
-          style={{
-            flex: 1,
-            minHeight: 160,
-            background: 'rgba(255,255,255,0.055)',
-            border: '1px solid rgba(255,255,255,0.09)',
-            borderRadius: 20,
-            backdropFilter: 'blur(20px)',
-            display: mode === 'text' ? 'flex' : 'none',
-            flexDirection: 'column',
-            padding: '20px',
-            position: 'relative',
-            transition: 'border-color 0.2s',
-            borderColor:
-              text.length > 0
-                ? accentBorder
-                : 'rgba(255,255,255,0.09)',
-          }}
-        >
-          <textarea
-            value={text}
-            onChange={e =>
-              e.target.value.length <= MAX_CHARS &&
-              setText(e.target.value)
-            }
-            placeholder="Type a message to Yeti..."
+        {mode === 'text' ? (
+          <div
             style={{
               flex: 1,
-              background: 'transparent',
-              border: 'none',
-              fontFamily: 'Outfit, sans-serif',
-              fontSize: 16,
-              fontWeight: 400,
-              lineHeight: 1.65,
-              color: '#EEF2F7',
-              letterSpacing: '0.1px',
-            }}
-          />
-
-          {/* Character counter */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              alignItems: 'center',
-              gap: 8,
-              marginTop: 12,
-              paddingTop: 12,
-              borderTop: '1px solid rgba(255,255,255,0.07)',
-            }}
-          >
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                position: 'relative',
-                flexShrink: 0,
-              }}
-            >
-              <svg
-                width="28"
-                height="28"
-                style={{ transform: 'rotate(-90deg)' }}
-              >
-                <circle
-                  cx="14"
-                  cy="14"
-                  r="11"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.1)"
-                  strokeWidth="2"
-                />
-
-                <circle
-                  cx="14"
-                  cy="14"
-                  r="11"
-                  fill="none"
-                  stroke={
-                    text.length > MAX_CHARS * 0.8
-                      ? '#FF4D6D'
-                      : accentColor
-                  }
-                  strokeWidth="2"
-                  strokeDasharray={`${2 * Math.PI * 11}`}
-                  strokeDashoffset={`${2 * Math.PI * 11 * (1 - text.length / MAX_CHARS)}`}
-                  strokeLinecap="round"
-                  style={{
-                    transition: 'stroke-dashoffset 0.15s',
-                  }}
-                />
-              </svg>
-            </div>
-
-            <span
-              style={{
-                fontSize: 12,
-                color:
-                  text.length > MAX_CHARS * 0.8
-                    ? '#FF4D6D'
-                    : 'rgba(255,255,255,0.32)',
-                fontWeight: 500,
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              {MAX_CHARS - text.length}
-            </span>
-          </div>
-        </div>
-
-        {/* Doodle Mode */}
-        <div
-          style={{
-            flex: 1,
-            minHeight: 200,
-            display: mode === 'doodle' ? 'flex' : 'none',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 16,
-            overflow: 'hidden',
-          }}
-        >
-
-          {/* Canvas card */}
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.055)',
-              border: '1px solid rgba(255,255,255,0.09)',
+              minHeight: 0,
               borderRadius: 20,
-              backdropFilter: 'blur(20px)',
-              padding: 12,
-              width: '100%',
-              maxHeight: '100%',
-              display: 'flex',
-              justifyContent: 'center',
-              overflow: 'hidden',
-            }}
-          >
-            <canvas
-              ref={canvasRef}
-
-              // IMPORTANT:
-              // Landscape coordinate system matching Yeti.
-              width={CANVAS_WIDTH}
-              height={CANVAS_HEIGHT}
-
-              onMouseDown={startDraw}
-              onMouseMove={moveDraw}
-              onMouseUp={endDraw}
-              onMouseLeave={endDraw}
-              onTouchStart={startDraw}
-              onTouchMove={moveDraw}
-              onTouchEnd={endDraw}
-
-              style={{
-                width: '100%',
-                height: 'auto',
-                maxWidth: CANVAS_WIDTH,
-                maxHeight: CANVAS_HEIGHT,
-
-                // 280 / 240 = 7 / 6
-                aspectRatio: '7 / 6',
-
-                borderRadius: 12,
-                background: 'rgba(0,0,0,0.35)',
-                cursor: 'crosshair',
-                display: 'block',
-                touchAction: 'none',
-                border: '1px solid rgba(255,255,255,0.07)',
-              }}
-            />
-          </div>
-
-          {/* Toolbar */}
-          <div
-            style={{
-              width: '100%',
-              background: 'rgba(255,255,255,0.055)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              borderRadius: 16,
-              backdropFilter: 'blur(16px)',
-              padding: '14px 16px',
+              background: 'rgba(255,255,255,0.035)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              padding: 16,
+              boxSizing: 'border-box',
               display: 'flex',
               flexDirection: 'column',
-              gap: 14,
             }}
           >
+            <textarea
+              value={text}
+              onChange={(e) =>
+                setText(e.target.value.slice(0, MAX_CHARS))
+              }
+              placeholder="Write something..."
+              style={{
+                flex: 1,
+                width: '100%',
+                resize: 'none',
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                color: '#fff',
+                fontFamily: 'Outfit, sans-serif',
+                fontSize: 17,
+                lineHeight: 1.55,
+                boxSizing: 'border-box',
+              }}
+            />
 
-            {/* Actions row */}
             <div
               style={{
-                display: 'flex',
-                gap: 8,
-                alignItems: 'center',
+                textAlign: 'right',
+                fontSize: 10,
+                color: 'rgba(255,255,255,0.2)',
+                marginTop: 8,
               }}
             >
-              <button
-                onClick={handleClear}
+              {text.length}/{MAX_CHARS}
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+            }}
+          >
+            <div
+              style={{
+                width: CANVAS_WIDTH,
+                maxWidth: '100%',
+                aspectRatio: '7 / 6',
+                borderRadius: 20,
+                background: '#08090B',
+                border: '1px solid rgba(255,255,255,0.08)',
+                overflow: 'hidden',
+                position: 'relative',
+                touchAction: 'none',
+              }}
+            >
+              <canvas
+                ref={canvasRef}
+                width={CANVAS_WIDTH}
+                height={CANVAS_HEIGHT}
                 style={{
-                  flex: 1,
-                  padding: '8px 0',
-                  borderRadius: 10,
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  background: 'rgba(255,255,255,0.06)',
-                  color: 'rgba(255,255,255,0.65)',
-                  fontFamily: 'Outfit, sans-serif',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
+                  width: '100%',
+                  height: '100%',
+                  display: 'block',
+                  touchAction: 'none',
                 }}
-              >
-                Clear
-              </button>
+                onMouseDown={startDraw}
+                onMouseMove={moveDraw}
+                onMouseUp={endDraw}
+                onMouseLeave={endDraw}
+                onTouchStart={startDraw}
+                onTouchMove={moveDraw}
+                onTouchEnd={endDraw}
+              />
+            </div>
 
-              <button
-                onClick={handleUndo}
-                disabled={strokes.length === 0}
-                style={{
-                  flex: 1,
-                  padding: '8px 0',
-                  borderRadius: 10,
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  background: 'rgba(255,255,255,0.06)',
-                  color:
-                    strokes.length === 0
-                      ? 'rgba(255,255,255,0.2)'
-                      : 'rgba(255,255,255,0.65)',
-                  fontFamily: 'Outfit, sans-serif',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  cursor:
-                    strokes.length === 0
-                      ? 'default'
-                      : 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                Undo
-              </button>
-
-              {/* Stroke thickness */}
+            {/* Doodle Toolbar */}
+            <div
+              style={{
+                width: '100%',
+                marginTop: 12,
+                padding: '10px 12px',
+                borderRadius: 16,
+                background: 'rgba(255,255,255,0.035)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                boxSizing: 'border-box',
+              }}
+            >
               <div
                 style={{
                   display: 'flex',
-                  gap: 6,
                   alignItems: 'center',
-                  marginLeft: 4,
+                  gap: 7,
                 }}
               >
-                {[2, 4, 7].map(w => (
+                {SWATCHES.map((color) => (
                   <button
-                    key={w}
-                    onClick={() => setStrokeWidth(w)}
+                    key={color}
+                    onClick={() => setStrokeColor(color)}
                     style={{
-                      width: 28,
-                      height: 28,
+                      width: 20,
+                      height: 20,
                       borderRadius: '50%',
+                      background: color,
                       border:
-                        strokeWidth === w
-                          ? `2px solid ${accentColor}`
-                          : '1px solid rgba(255,255,255,0.15)',
-                      background:
-                        strokeWidth === w
-                          ? accentGlow
-                          : 'rgba(255,255,255,0.06)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.15s',
+                        strokeColor === color
+                          ? '2px solid rgba(255,255,255,0.9)'
+                          : '2px solid transparent',
+                      boxShadow:
+                        strokeColor === color
+                          ? `0 0 0 2px rgba(255,255,255,0.08)`
+                          : 'none',
                       padding: 0,
+                      cursor: 'pointer',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                ))}
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}
+              >
+                {[2, 4, 7].map((width) => (
+                  <button
+                    key={width}
+                    onClick={() => setStrokeWidth(width)}
+                    style={{
+                      width: 26,
+                      height: 26,
+                      borderRadius: 8,
+                      border:
+                        strokeWidth === width
+                          ? `1px solid ${accentBorder}`
+                          : '1px solid transparent',
+                      background:
+                        strokeWidth === width
+                          ? accentGlow
+                          : 'transparent',
+                      color:
+                        strokeWidth === width
+                          ? '#fff'
+                          : 'rgba(255,255,255,0.3)',
+                      fontFamily: 'Outfit, sans-serif',
+                      fontSize: 9,
+                      cursor: 'pointer',
                     }}
                   >
-                    <div
-                      style={{
-                        width: w + 2,
-                        height: w + 2,
-                        borderRadius: '50%',
-                        background:
-                          strokeWidth === w
-                            ? accentColor
-                            : 'rgba(255,255,255,0.5)',
-                      }}
-                    />
+                    {width}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Color swatches */}
+            {/* Doodle Footer Controls */}
             <div
               style={{
+                width: '100%',
                 display: 'flex',
-                gap: 10,
-                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginTop: 8,
               }}
             >
-              <span
+              <button
+                onClick={handleUndo}
                 style={{
-                  fontSize: 11,
-                  color: 'rgba(255,255,255,0.28)',
-                  fontWeight: 500,
-                  letterSpacing: '0.5px',
-                  textTransform: 'uppercase',
-                  flexShrink: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'rgba(255,255,255,0.25)',
+                  fontFamily: 'Outfit, sans-serif',
+                  fontSize: 10,
+                  cursor: 'pointer',
+                  padding: 4,
                 }}
               >
-                Color
-              </span>
+                Undo
+              </button>
 
-              <div
+              <button
+                onClick={handleClear}
                 style={{
-                  display: 'flex',
-                  gap: 8,
-                  flex: 1,
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'rgba(255,255,255,0.25)',
+                  fontFamily: 'Outfit, sans-serif',
+                  fontSize: 10,
+                  cursor: 'pointer',
+                  padding: 4,
                 }}
               >
-                {SWATCHES.map(c => (
-                  <button
-                    key={c}
-                    onClick={() => setStrokeColor(c)}
-                    style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: '50%',
-                      background: c,
-                      border:
-                        strokeColor === c
-                          ? '2.5px solid #fff'
-                          : '2px solid rgba(255,255,255,0.15)',
-                      cursor: 'pointer',
-                      padding: 0,
-                      transform:
-                        strokeColor === c
-                          ? 'scale(1.18)'
-                          : 'scale(1)',
-                      transition: 'all 0.15s',
-                      boxShadow:
-                        strokeColor === c
-                          ? `0 0 8px ${c}80`
-                          : 'none',
-                    }}
-                  />
-                ))}
-              </div>
+                Clear
+              </button>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Footer */}
-      <div className="px-6 pb-4 pt-5 flex-shrink-0">
-
-        {/* Very subtle YETI identity control */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 6,
-            marginBottom: 8,
-          }}
-        >
-          <span
-            style={{
-              fontSize: 10,
-              color: 'rgba(255,255,255,0.18)',
-              letterSpacing: '0.4px',
-              fontFamily: 'Outfit, sans-serif',
-            }}
-          >
-            {recipientId}
-          </span>
-
-          <button
-            onClick={() => {
-              localStorage.removeItem('yeti_onboarding_complete')
-              setOnboardingComplete(false)
-            }}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              padding: 0,
-              color: 'rgba(255,255,255,0.16)',
-              fontFamily: 'Outfit, sans-serif',
-              fontSize: 10,
-              cursor: 'pointer',
-              letterSpacing: '0.2px',
-            }}
-          >
-            change
-          </button>
-        </div>
-
+      {/* Send Button */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          marginTop: 14,
+        }}
+      >
         <button
           onClick={handleSend}
           disabled={!canSend || isSending}
           style={{
             width: '100%',
-            padding: '17px 24px',
-            borderRadius: 16,
-            border: 'none',
+            height: 54,
+            borderRadius: 17,
+            border: `1px solid ${accentBorder}`,
+            background: canSend
+              ? accentGradient
+              : 'rgba(255,255,255,0.035)',
+            color: canSend
+              ? '#fff'
+              : 'rgba(255,255,255,0.2)',
+            fontFamily: 'Outfit, sans-serif',
+            fontSize: 13,
+            fontWeight: 500,
             cursor:
               canSend && !isSending
                 ? 'pointer'
                 : 'default',
-            fontFamily: 'Outfit, sans-serif',
-            fontSize: 16,
-            fontWeight: 600,
-            letterSpacing: '0.2px',
-            transition:
-              'all 0.22s cubic-bezier(0.34,1.56,0.64,1)',
-            background: sent
-              ? `linear-gradient(135deg, ${accentColor} 0%, ${accentColor} 100%)`
-              : canSend && !isSending
-                ? recipientId === 'YETI_B'
-                  ? 'linear-gradient(135deg, #E5B94F 0%, #FFD166 50%, #FFE08A 100%)'
-                  : 'linear-gradient(135deg, #00C9B4 0%, #00E5CC 50%, #1AFFEC 100%)'
-                : 'rgba(255,255,255,0.07)',
-            color:
-              canSend || sent
-                ? '#08090B'
-                : 'rgba(255,255,255,0.22)',
             boxShadow:
-              canSend && !isSending && !sent
+              canSend && !isSending
                 ? accentShadow
                 : 'none',
-            transform:
-              isSending
-                ? 'scale(0.97)'
-                : 'scale(1)',
+            transition: 'all 0.2s ease',
           }}
         >
           {sent
-            ? `✓ Sent to ${recipientId}`
+            ? `✓ Sent to ${
+                recipientId === 'YETI_A'
+                  ? 'Yeti A'
+                  : 'Yeti B'
+              }`
             : isSending
               ? 'Sending...'
-              : 'Send to Yeti →'}
+              : 'Send'}
         </button>
+      </div>
 
-        <p
+      {/* Footer */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: 10,
+          paddingBottom: 2,
+        }}
+      >
+        <span
           style={{
-            textAlign: 'center',
-            marginTop: 12,
-            fontSize: 11,
-            fontWeight: 400,
-            color: 'rgba(255,255,255,0.22)',
+            fontSize: 10,
+            color: 'rgba(255,255,255,0.18)',
             letterSpacing: '0.4px',
             fontFamily: 'Outfit, sans-serif',
           }}
         >
-          Yeti Messenger v1.0
-        </p>
+          {recipientId === 'YETI_A'
+            ? 'Yeti A'
+            : 'Yeti B'}
+        </span>
+
+        <button
+          onClick={() => {
+            localStorage.removeItem(
+              'yeti_onboarding_complete'
+            )
+            setOnboardingComplete(false)
+          }}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            color: 'rgba(255,255,255,0.16)',
+            fontFamily: 'Outfit, sans-serif',
+            fontSize: 10,
+            cursor: 'pointer',
+            letterSpacing: '0.2px',
+          }}
+        >
+          Change Yeti
+        </button>
       </div>
 
-      <style>{`
-        @keyframes pulse {
-          0%, 100% {
-            opacity: 1;
-            box-shadow: 0 0 6px ${accentColor};
-          }
-
-          50% {
-            opacity: 0.55;
-            box-shadow: 0 0 10px ${accentColor};
-          }
-        }
-      `}</style>
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          textAlign: 'center',
+          marginTop: 8,
+          fontSize: 9,
+          color: 'rgba(255,255,255,0.12)',
+          letterSpacing: '0.5px',
+        }}
+      >
+        Yeti Messenger v1.0
+      </div>
     </div>
   )
 }
